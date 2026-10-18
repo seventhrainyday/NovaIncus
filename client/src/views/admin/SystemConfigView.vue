@@ -94,7 +94,7 @@ const form = ref({
   smtp_username: '',
   smtp_password: '',
   smtp_from_email: '',
-  smtp_from_name: 'Incudal',
+  smtp_from_name: 'NovaIncus',
   brand_name: 'Incudal',
   brand_subtitle: '基于 Incus 的低价 NAT VPS',
   brand_logo_url: '/incudal_logo.webp',

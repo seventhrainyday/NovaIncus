@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"incudal-agent/internal/config"
-	"incudal-agent/internal/protocol"
+	"novaincus-agent/internal/config"
+	"novaincus-agent/internal/protocol"
 )
 
 const heartbeatPath = "/api/agent/heartbeat"
@@ -75,11 +75,11 @@ func (client *Client) Heartbeat(ctx context.Context, payload map[string]any) (He
 		return HeartbeatResult{}, err
 	}
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("x-incudal-agent-id", client.agentID)
-	request.Header.Set("x-incudal-timestamp", timestamp)
-	request.Header.Set("x-incudal-nonce", nonce)
-	request.Header.Set("x-incudal-body-sha256", bodyHash)
-	request.Header.Set("x-incudal-signature", signature)
+	request.Header.Set("x-novaincus-agent-id", client.agentID)
+	request.Header.Set("x-novaincus-timestamp", timestamp)
+	request.Header.Set("x-novaincus-nonce", nonce)
+	request.Header.Set("x-novaincus-body-sha256", bodyHash)
+	request.Header.Set("x-novaincus-signature", signature)
 
 	startedAt := time.Now()
 	response, err := client.httpClient.Do(request)

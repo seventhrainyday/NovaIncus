@@ -1,7 +1,7 @@
 {
-  "name": "incudal",
+  "name": "novaincus",
   "version": "1.0.0",
-  "description": "Incudal 容器虚拟化管理平台",
+  "description": "NovaIncus 容器虚拟化管理平台",
   "type": "module",
   "private": true,
   "scripts": {

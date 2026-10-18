@@ -13,12 +13,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"incudal-agent/internal/panel"
+	"novaincus-agent/internal/panel"
 )
 
 func TestApplyUpgradeReplacesBinaryAndRestarts(t *testing.T) {
 	tempDir := t.TempDir()
-	binaryPath := filepath.Join(tempDir, "incudal-agent")
+	binaryPath := filepath.Join(tempDir, "novaincus-agent")
 	if err := os.WriteFile(binaryPath, []byte("old-binary"), 0755); err != nil {
 		t.Fatalf("write current binary: %v", err)
 	}
@@ -37,12 +37,12 @@ func TestApplyUpgradeReplacesBinaryAndRestarts(t *testing.T) {
 		BinaryPath:       binaryPath,
 		BackupPath:       binaryPath + ".bak",
 		LockPath:         filepath.Join(tempDir, "upgrade.lock"),
-		ServiceName:      "incudal-agent",
+		ServiceName:      "novaincus-agent",
 		AllowedBaseURL:   server.URL,
 		HTTPClient:       server.Client(),
 		MaxDownloadBytes: 1024 * 1024,
 		Restart: func(_ context.Context, serviceName string) error {
-			if serviceName != "incudal-agent" {
+			if serviceName != "novaincus-agent" {
 				t.Fatalf("unexpected service name: %s", serviceName)
 			}
 			restarted = true
@@ -53,7 +53,7 @@ func TestApplyUpgradeReplacesBinaryAndRestarts(t *testing.T) {
 	err := runner.Apply(context.Background(), panel.UpgradeInstruction{
 		Available: true,
 		Version:   "v2",
-		URL:       server.URL + "/incudal-agent-linux-amd64.gz",
+		URL:       server.URL + "/novaincus-agent-linux-amd64.gz",
 		SHA256:    sha,
 		Gzip:      true,
 	}, "v1")
@@ -83,7 +83,7 @@ func TestApplyUpgradeReplacesBinaryAndRestarts(t *testing.T) {
 
 func TestApplyUpgradeRejectsBadSHA(t *testing.T) {
 	tempDir := t.TempDir()
-	binaryPath := filepath.Join(tempDir, "incudal-agent")
+	binaryPath := filepath.Join(tempDir, "novaincus-agent")
 	if err := os.WriteFile(binaryPath, []byte("old-binary"), 0755); err != nil {
 		t.Fatalf("write current binary: %v", err)
 	}
@@ -111,7 +111,7 @@ func TestApplyUpgradeRejectsBadSHA(t *testing.T) {
 	err := runner.Apply(context.Background(), panel.UpgradeInstruction{
 		Available: true,
 		Version:   "v2",
-		URL:       server.URL + "/incudal-agent-linux-amd64.gz",
+		URL:       server.URL + "/novaincus-agent-linux-amd64.gz",
 		SHA256:    "0000000000000000000000000000000000000000000000000000000000000000",
 		Gzip:      true,
 	}, "v1")
@@ -133,7 +133,7 @@ func TestApplyUpgradeRejectsBadSHA(t *testing.T) {
 
 func TestApplyUpgradeDoesNotRollbackWhenSelfRestartIsInterrupted(t *testing.T) {
 	tempDir := t.TempDir()
-	binaryPath := filepath.Join(tempDir, "incudal-agent")
+	binaryPath := filepath.Join(tempDir, "novaincus-agent")
 	if err := os.WriteFile(binaryPath, []byte("old-binary"), 0755); err != nil {
 		t.Fatalf("write current binary: %v", err)
 	}
@@ -151,7 +151,7 @@ func TestApplyUpgradeDoesNotRollbackWhenSelfRestartIsInterrupted(t *testing.T) {
 		BinaryPath:       binaryPath,
 		BackupPath:       binaryPath + ".bak",
 		LockPath:         filepath.Join(tempDir, "upgrade.lock"),
-		ServiceName:      "incudal-agent",
+		ServiceName:      "novaincus-agent",
 		AllowedBaseURL:   server.URL,
 		HTTPClient:       server.Client(),
 		MaxDownloadBytes: 1024 * 1024,
@@ -163,7 +163,7 @@ func TestApplyUpgradeDoesNotRollbackWhenSelfRestartIsInterrupted(t *testing.T) {
 	err := runner.Apply(context.Background(), panel.UpgradeInstruction{
 		Available: true,
 		Version:   "v2",
-		URL:       server.URL + "/incudal-agent-linux-amd64.gz",
+		URL:       server.URL + "/novaincus-agent-linux-amd64.gz",
 		SHA256:    sha,
 		Gzip:      true,
 	}, "v1")
@@ -182,7 +182,7 @@ func TestApplyUpgradeDoesNotRollbackWhenSelfRestartIsInterrupted(t *testing.T) {
 
 func TestApplyUpgradeRejectsDifferentOrigin(t *testing.T) {
 	tempDir := t.TempDir()
-	binaryPath := filepath.Join(tempDir, "incudal-agent")
+	binaryPath := filepath.Join(tempDir, "novaincus-agent")
 	if err := os.WriteFile(binaryPath, []byte("old-binary"), 0755); err != nil {
 		t.Fatalf("write current binary: %v", err)
 	}
@@ -201,7 +201,7 @@ func TestApplyUpgradeRejectsDifferentOrigin(t *testing.T) {
 	err := runner.Apply(context.Background(), panel.UpgradeInstruction{
 		Available: true,
 		Version:   "v2",
-		URL:       "https://evil.example/incudal-agent-linux-amd64.gz",
+		URL:       "https://evil.example/novaincus-agent-linux-amd64.gz",
 		SHA256:    "0000000000000000000000000000000000000000000000000000000000000000",
 		Gzip:      true,
 	}, "v1")

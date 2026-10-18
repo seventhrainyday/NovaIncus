@@ -1,3 +1,3 @@
-module incudal-agent
+module novaincus-agent
 
 go 1.19

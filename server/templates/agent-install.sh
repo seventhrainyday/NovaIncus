@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SERVICE_NAME="incudal-agent"
-CONFIG_DIR="${INCUDAL_CONFIG_DIR:-/etc/incudal-agent}"
+SERVICE_NAME="novaincus-agent"
+CONFIG_DIR="${INCUDAL_CONFIG_DIR:-/etc/novaincus-agent}"
 CONFIG_FILE="${INCUDAL_CONFIG_FILE:-${CONFIG_DIR}/config.yaml}"
 INSTALL_DIR="${INCUDAL_INSTALL_DIR:-/usr/local/bin}"
-BIN_PATH="${INCUDAL_AGENT_BIN:-${INSTALL_DIR}/incudal-agent}"
+BIN_PATH="${INCUDAL_AGENT_BIN:-${INSTALL_DIR}/novaincus-agent}"
 SERVICE_FILE="${INCUDAL_SERVICE_FILE:-/etc/systemd/system/${SERVICE_NAME}.service}"
 HEARTBEAT_INTERVAL="${INCUDAL_HEARTBEAT_INTERVAL_SECONDS:-30}"
 REQUEST_TIMEOUT="${INCUDAL_REQUEST_TIMEOUT_SECONDS:-10}"
@@ -215,7 +215,7 @@ validate_binary_name() {
   local arch="$3"
 
   case "${name}" in
-    "incudal-agent-${os}-${arch}"|"incudal-agent-${os}-${arch}.gz")
+    "novaincus-agent-${os}-${arch}"|"novaincus-agent-${os}-${arch}.gz")
       return 0
       ;;
     *)
@@ -269,7 +269,7 @@ OS="$(detect_os)"
 ARCH="$(detect_arch)"
 DEFAULT_BINARY_BASE_URL="${PANEL_BASE_URL}/api/agent/binary"
 BINARY_BASE_URL="${INCUDAL_AGENT_BINARY_BASE_URL:-${DEFAULT_BINARY_BASE_URL}}"
-BINARY_NAME="incudal-agent-${OS}-${ARCH}"
+BINARY_NAME="novaincus-agent-${OS}-${ARCH}"
 BINARY_URL="${INCUDAL_AGENT_BINARY_URL:-}"
 BINARY_EXPECTED_SHA256="${INCUDAL_AGENT_BINARY_SHA256:-}"
 BINARY_FALLBACK_URL=""

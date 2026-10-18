@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Guidance for AI coding agents working on Incudal.
+Guidance for AI coding agents working on NovaIncus.
 
 ## Project Overview
 

@@ -10,16 +10,16 @@ import (
 	"syscall"
 	"time"
 
-	"incudal-agent/internal/config"
-	"incudal-agent/internal/panel"
-	"incudal-agent/internal/report"
-	"incudal-agent/internal/upgrade"
+	"novaincus-agent/internal/config"
+	"novaincus-agent/internal/panel"
+	"novaincus-agent/internal/report"
+	"novaincus-agent/internal/upgrade"
 )
 
 var version = "dev"
 
 func main() {
-	configPath := flag.String("config", "/etc/incudal-agent/config.yaml", "agent config file")
+	configPath := flag.String("config", "/etc/novaincus-agent/config.yaml", "agent config file")
 	once := flag.Bool("once", false, "send one heartbeat and exit")
 	flag.Parse()
 
@@ -39,7 +39,7 @@ func main() {
 		return
 	}
 
-	log.Printf("incudal-agent started: panel=%s interval=%s", cfg.PanelURL, cfg.HeartbeatInterval)
+	log.Printf("novaincus-agent started: panel=%s interval=%s", cfg.PanelURL, cfg.HeartbeatInterval)
 	upgradeRunner := upgrade.DefaultRunner(cfg)
 	var upgradeInProgress atomic.Bool
 	if result, err := sendHeartbeat(ctx, client, cfg.HeartbeatIntervalSeconds); err != nil {
@@ -53,7 +53,7 @@ func main() {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Printf("incudal-agent stopped")
+			log.Printf("novaincus-agent stopped")
 			return
 		case <-ticker.C:
 			if result, err := sendHeartbeat(ctx, client, cfg.HeartbeatIntervalSeconds); err != nil {

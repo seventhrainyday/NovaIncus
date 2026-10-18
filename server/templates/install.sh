@@ -39,9 +39,9 @@ readonly AGENT_SECRET="${INJECT_AGENT_SECRET:-}"
 readonly AGENT_INSTALL_TOKEN="${INJECT_AGENT_INSTALL_TOKEN:-}"
 readonly AGENT_BINARY_URL="${INJECT_AGENT_BINARY_URL:-}"
 readonly AGENT_ENABLED="${INJECT_AGENT_ENABLED:-true}"
-readonly AGENT_SERVICE_NAME="incudal-agent"
-readonly AGENT_CONFIG_FILE="${INCUDAL_AGENT_CONFIG_FILE:-/etc/incudal-agent/config.yaml}"
-readonly AGENT_BIN_PATH="${INCUDAL_AGENT_BIN:-/usr/local/bin/incudal-agent}"
+readonly AGENT_SERVICE_NAME="novaincus-agent"
+readonly AGENT_CONFIG_FILE="${INCUDAL_AGENT_CONFIG_FILE:-/etc/novaincus-agent/config.yaml}"
+readonly AGENT_BIN_PATH="${INCUDAL_AGENT_BIN:-/usr/local/bin/novaincus-agent}"
 
 # ZFS 预编译模块下载地址（GitHub Release）
 # 格式: ${ZFS_PREBUILT_URL}/zfs-modules-<内核版本>.tar.gz
@@ -1468,7 +1468,7 @@ import_cert() {
 }
 
 # 附加步骤：安装宿主机 Agent
-install_incudal_agent() {
+install_novaincus_agent() {
     if [[ "$AGENT_ENABLED" != "true" ]]; then
         AGENT_INSTALL_STATUS="已跳过"
         info "宿主机 Agent 自动安装已关闭，跳过"
@@ -1503,7 +1503,7 @@ install_incudal_agent() {
 }
 
 # Agent 独立安装器调用
-run_incudal_agent_installer() {
+run_novaincus_agent_installer() {
     local panel_url="${1%/}"
     local install_token="${2:-}"
     local agent_id="${3:-}"
@@ -1551,7 +1551,7 @@ run_incudal_agent_installer() {
     return 1
 }
 
-show_incudal_agent_status() {
+show_novaincus_agent_status() {
     divider
     echo -e "  ${BOLD}Agent 状态${NC}"
     divider
@@ -1621,7 +1621,7 @@ prompt_agent_panel_url() {
     echo "$panel_url"
 }
 
-update_incudal_agent_from_config() {
+update_novaincus_agent_from_config() {
     local panel_url=""
     local agent_id=""
     local agent_secret=""
@@ -1640,10 +1640,10 @@ update_incudal_agent_from_config() {
     fi
 
     prompt_agent_heartbeat_interval "$heartbeat_interval"
-    run_incudal_agent_installer "$panel_url" "" "$agent_id" "$agent_secret" "$AGENT_HEARTBEAT_INTERVAL_SECONDS" "$AGENT_BINARY_URL"
+    run_novaincus_agent_installer "$panel_url" "" "$agent_id" "$agent_secret" "$AGENT_HEARTBEAT_INTERVAL_SECONDS" "$AGENT_BINARY_URL"
 }
 
-install_incudal_agent_with_token() {
+install_novaincus_agent_with_token() {
     echo ""
     divider
     echo -e "  ${BOLD}输入 Agent 一次性安装 token${NC}"
@@ -1673,10 +1673,10 @@ install_incudal_agent_with_token() {
     current_interval=$(read_agent_config_value "heartbeat_interval_seconds" || true)
     prompt_agent_heartbeat_interval "${current_interval:-30}"
 
-    run_incudal_agent_installer "$panel_url" "$install_token" "" "" "$AGENT_HEARTBEAT_INTERVAL_SECONDS" "$AGENT_BINARY_URL"
+    run_novaincus_agent_installer "$panel_url" "$install_token" "" "" "$AGENT_HEARTBEAT_INTERVAL_SECONDS" "$AGENT_BINARY_URL"
 }
 
-show_incudal_agent_logs() {
+show_novaincus_agent_logs() {
     step "查看 Agent 最近日志"
     if ! command -v journalctl &>/dev/null; then
         error "journalctl 不可用"
@@ -1685,9 +1685,9 @@ show_incudal_agent_logs() {
     journalctl -u "$AGENT_SERVICE_NAME" --no-pager -n 80 || true
 }
 
-manage_incudal_agent() {
+manage_novaincus_agent() {
     while true; do
-        show_incudal_agent_status
+        show_novaincus_agent_status
         echo -e "  ${BOLD}请选择 Agent 操作：${NC}"
         echo ""
         echo -e "    ${CYAN}1)${NC}  更新 / 重装已安装 Agent  ${DIM}─  使用本机配置${NC}"
@@ -1701,9 +1701,9 @@ manage_incudal_agent() {
         echo ""
 
         case "$choice" in
-            1) update_incudal_agent_from_config || true; pause_return ;;
-            2) install_incudal_agent_with_token || true; pause_return ;;
-            3) show_incudal_agent_logs || true; pause_return ;;
+            1) update_novaincus_agent_from_config || true; pause_return ;;
+            2) install_novaincus_agent_with_token || true; pause_return ;;
+            3) show_novaincus_agent_logs || true; pause_return ;;
             0) return 0 ;;
             *) warn "无效选项，请重新选择" ;;
         esac
@@ -2641,7 +2641,7 @@ main() {
         exit 0
     fi
     if [[ "$ACTION" == "agent" ]]; then
-        manage_incudal_agent
+        manage_novaincus_agent
         exit 0
     fi
 
@@ -2717,7 +2717,7 @@ main() {
                 5)  uninstall_rfw; continue ;;
                 6)  do_uninstall; exit 0 ;;
                 7)  show_network_mode_help; continue ;;
-                8)  manage_incudal_agent; continue ;;
+                8)  manage_novaincus_agent; continue ;;
                 0)  info "再见！"; exit 0 ;;
                 *)  warn "无效选项，请重新选择"; continue ;;
             esac
@@ -2810,7 +2810,7 @@ main() {
         setup_v6_guardian
     fi
 
-    install_incudal_agent
+    install_novaincus_agent
 
     show_result
 }

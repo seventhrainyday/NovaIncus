@@ -1,7 +1,7 @@
 {
   "name": "client",
   "version": "1.0.0",
-  "description": "Incudal 前端客户端",
+  "description": "NovaIncus 前端客户端",
   "type": "module",
   "scripts": {
     "dev": "vite",

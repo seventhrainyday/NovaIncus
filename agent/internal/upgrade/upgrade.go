@@ -20,12 +20,12 @@ import (
 	"strings"
 	"time"
 
-	"incudal-agent/internal/config"
-	"incudal-agent/internal/panel"
+	"novaincus-agent/internal/config"
+	"novaincus-agent/internal/panel"
 )
 
 const (
-	defaultServiceName      = "incudal-agent"
+	defaultServiceName      = "novaincus-agent"
 	defaultMaxDownloadBytes = 64 * 1024 * 1024
 )
 
@@ -48,7 +48,7 @@ type Runner struct {
 func DefaultRunner(cfg config.Config) *Runner {
 	binaryPath, err := os.Executable()
 	if err != nil || binaryPath == "" {
-		binaryPath = "/usr/local/bin/incudal-agent"
+		binaryPath = "/usr/local/bin/novaincus-agent"
 	}
 
 	return &Runner{
@@ -188,7 +188,7 @@ func (runner *Runner) download(ctx context.Context, rawURL string) ([]byte, erro
 
 func (runner *Runner) writeTempBinary(binaryBytes []byte) (string, error) {
 	binaryPath := runner.binaryPath()
-	tempFile, err := os.CreateTemp(filepath.Dir(binaryPath), ".incudal-agent-upgrade-*")
+	tempFile, err := os.CreateTemp(filepath.Dir(binaryPath), ".novaincus-agent-upgrade-*")
 	if err != nil {
 		return "", err
 	}
@@ -246,7 +246,7 @@ func (runner *Runner) binaryPath() string {
 	if runner.BinaryPath != "" {
 		return runner.BinaryPath
 	}
-	return "/usr/local/bin/incudal-agent"
+	return "/usr/local/bin/novaincus-agent"
 }
 
 func (runner *Runner) backupPath() string {
@@ -265,9 +265,9 @@ func (runner *Runner) lockPath() string {
 
 func defaultLockPath() string {
 	if info, err := os.Stat("/run"); err == nil && info.IsDir() {
-		return "/run/incudal-agent-upgrade.lock"
+		return "/run/novaincus-agent-upgrade.lock"
 	}
-	return filepath.Join(os.TempDir(), "incudal-agent-upgrade.lock")
+	return filepath.Join(os.TempDir(), "novaincus-agent-upgrade.lock")
 }
 
 func acquireLock(lockPath string) (func(), error) {
@@ -362,7 +362,7 @@ func scheduleSystemdRestart(ctx context.Context, serviceName string) error {
 		return err
 	}
 
-	unitName := fmt.Sprintf("incudal-agent-restart-%d", os.Getpid())
+	unitName := fmt.Sprintf("novaincus-agent-restart-%d", os.Getpid())
 	args := []string{
 		"--unit", unitName,
 		"--description", "Restart Incudal Agent after self-upgrade",

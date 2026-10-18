@@ -39,8 +39,8 @@ watchEffect(() => {
   const translatedTitle = titleKey ? t(titleKey) : ''
   const pageTitle = translatedTitle && translatedTitle !== titleKey ? translatedTitle : fallbackTitle
 
-  const brandName = configStore.brandName?.trim() || 'Incudal'
-  const brandSubtitle = configStore.brandSubtitle?.trim() || '基于 Incus 的低价 NAT VPS'
+  const brandName = configStore.brandName?.trim() || 'NovaIncus'
+  const brandSubtitle = configStore.brandSubtitle?.trim() || '基于 Incus 的云容器与 VPS 管理平台'
   document.title = pageTitle ? `${brandName} - ${pageTitle}` : `${brandName} - ${brandSubtitle}`
 })
 

@@ -23,9 +23,9 @@ type PopupPromoPackage = {
 
 export const useConfigStore = defineStore('config', () => {
     const avatarApiBase = ref('https://api.dicebear.com/9.x')
-    const brandName = ref('Incudal')
+    const brandName = ref('NovaIncus')
     const brandSubtitle = ref('基于 Incus 的低价 NAT VPS')
-    const brandLogoUrl = ref('/incudal_logo.webp')
+    const brandLogoUrl = ref('/novaincus_logo.webp')
     const registrationEnabled = ref(true)
     const requireInviteCode = ref(true)
     const ticketEnabled = ref(true)
@@ -67,9 +67,9 @@ export const useConfigStore = defineStore('config', () => {
                 turnstileEnabled.value = config.turnstileEnabled || false
                 turnstileSiteKey.value = config.turnstileSiteKey || null
                 avatarApiBase.value = config.avatarApiBase || 'https://api.dicebear.com/9.x'
-                brandName.value = config.brandName?.trim() || 'Incudal'
+                brandName.value = config.brandName?.trim() || 'NovaIncus'
                 brandSubtitle.value = config.brandSubtitle?.trim() || '基于 Incus 的低价 NAT VPS'
-                brandLogoUrl.value = config.brandLogoUrl?.trim() || '/incudal_logo.webp'
+                brandLogoUrl.value = config.brandLogoUrl?.trim() || '/novaincus_logo.webp'
                 transferFee.value = config.transferFee || 0
                 balanceTransferEnabled.value = config.balanceTransferEnabled ?? false
                 balanceTransferFee.value = config.balanceTransferFee || 0

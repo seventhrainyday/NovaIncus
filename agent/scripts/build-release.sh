@@ -26,7 +26,7 @@ mkdir -p "${DIST_DIR}"
 
 build_one() {
   local goarch="$1"
-  local output="${DIST_DIR}/incudal-agent-linux-${goarch}"
+  local output="${DIST_DIR}/novaincus-agent-linux-${goarch}"
 
   echo "Building ${output} (version=${VERSION})"
   (
@@ -38,7 +38,7 @@ build_one() {
         -gcflags "all=-l" \
         -ldflags "-s -w -X main.version=${VERSION}" \
         -o "${output}" \
-        ./cmd/incudal-agent
+        ./cmd/novaincus-agent
   )
   chmod +x "${output}"
   gzip -9 -c "${output}" > "${output}.gz"
@@ -56,21 +56,21 @@ size_file() {
 }
 
 GENERATED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-AMD64_GZ="${DIST_DIR}/incudal-agent-linux-amd64.gz"
-ARM64_GZ="${DIST_DIR}/incudal-agent-linux-arm64.gz"
+AMD64_GZ="${DIST_DIR}/novaincus-agent-linux-amd64.gz"
+ARM64_GZ="${DIST_DIR}/novaincus-agent-linux-arm64.gz"
 cat > "${DIST_DIR}/manifest.json" <<EOF_MANIFEST
 {
   "version": "${VERSION}",
   "generatedAt": "${GENERATED_AT}",
   "files": {
     "linux-amd64": {
-      "name": "incudal-agent-linux-amd64.gz",
+      "name": "novaincus-agent-linux-amd64.gz",
       "sha256": "$(sha256_file "${AMD64_GZ}")",
       "size": $(size_file "${AMD64_GZ}"),
       "gzip": true
     },
     "linux-arm64": {
-      "name": "incudal-agent-linux-arm64.gz",
+      "name": "novaincus-agent-linux-arm64.gz",
       "sha256": "$(sha256_file "${ARM64_GZ}")",
       "size": $(size_file "${ARM64_GZ}"),
       "gzip": true
@@ -79,4 +79,4 @@ cat > "${DIST_DIR}/manifest.json" <<EOF_MANIFEST
 }
 EOF_MANIFEST
 
-ls -lh "${DIST_DIR}"/incudal-agent-linux-* "${DIST_DIR}/manifest.json"
+ls -lh "${DIST_DIR}"/novaincus-agent-linux-* "${DIST_DIR}/manifest.json"

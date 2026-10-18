@@ -102,8 +102,8 @@ const agentModel = prisma.hostAgent
 const nonceModel = prisma.hostAgentNonce
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
-const agentBinaryNamePattern = /^incudal-agent-linux-(amd64|arm64)$/
-const agentReleaseBinaryNamePattern = /^incudal-agent-(x86_64|aarch64)-v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/
+const agentBinaryNamePattern = /^novaincus-agent-linux-(amd64|arm64)$/
+const agentReleaseBinaryNamePattern = /^novaincus-agent-(x86_64|aarch64)-v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/
 const defaultAgentReleaseRepository = 'qwer-xyz/incudal_classic'
 const githubApiBaseUrl = 'https://api.github.com'
 const githubDownloadBaseUrl = 'https://github.com'
@@ -390,20 +390,20 @@ function normalizeAgentReleaseVersion(tagName: string | undefined): string | nul
 }
 
 function agentApiBinaryNameToReleaseAssetName(name: string, version: string): string | null {
-  if (name === 'incudal-agent-linux-amd64') {
-    return `incudal-agent-x86_64-${version}`
+  if (name === 'novaincus-agent-linux-amd64') {
+    return `novaincus-agent-x86_64-${version}`
   }
-  if (name === 'incudal-agent-linux-arm64') {
-    return `incudal-agent-aarch64-${version}`
+  if (name === 'novaincus-agent-linux-arm64') {
+    return `novaincus-agent-aarch64-${version}`
   }
   return null
 }
 
 function releaseAssetNameToAgentPlatform(name: string): 'linux-amd64' | 'linux-arm64' | null {
-  if (name.startsWith('incudal-agent-x86_64-')) {
+  if (name.startsWith('novaincus-agent-x86_64-')) {
     return 'linux-amd64'
   }
-  if (name.startsWith('incudal-agent-aarch64-')) {
+  if (name.startsWith('novaincus-agent-aarch64-')) {
     return 'linux-arm64'
   }
   return null
@@ -513,7 +513,7 @@ async function readAgentUpgradeManifest(): Promise<AgentUpgradeManifest | null> 
     }
 
     manifest.files![platform] = {
-      name: platform === 'linux-amd64' ? 'incudal-agent-linux-amd64' : 'incudal-agent-linux-arm64',
+      name: platform === 'linux-amd64' ? 'novaincus-agent-linux-amd64' : 'novaincus-agent-linux-arm64',
       sha256,
       size,
       gzip: false

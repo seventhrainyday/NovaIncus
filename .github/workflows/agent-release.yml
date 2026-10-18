@@ -137,24 +137,24 @@ jobs:
           VERSION="${{ needs.version.outputs.version }}"
           mkdir -p agent/release
 
-          cp agent/dist/incudal-agent-linux-amd64 "agent/release/incudal-agent-x86_64-${VERSION}"
-          cp agent/dist/incudal-agent-linux-arm64 "agent/release/incudal-agent-aarch64-${VERSION}"
+          cp agent/dist/novaincus-agent-linux-amd64 "agent/release/novaincus-agent-x86_64-${VERSION}"
+          cp agent/dist/novaincus-agent-linux-arm64 "agent/release/novaincus-agent-aarch64-${VERSION}"
 
       - name: Verify release assets
         shell: bash
         run: |
           set -euo pipefail
           VERSION="${{ needs.version.outputs.version }}"
-          test -s "agent/release/incudal-agent-x86_64-${VERSION}"
-          test -s "agent/release/incudal-agent-aarch64-${VERSION}"
+          test -s "agent/release/novaincus-agent-x86_64-${VERSION}"
+          test -s "agent/release/novaincus-agent-aarch64-${VERSION}"
 
       - name: Upload Agent artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: incudal-agent-${{ needs.version.outputs.version }}
+          name: novaincus-agent-${{ needs.version.outputs.version }}
           path: |
-            agent/release/incudal-agent-x86_64-${{ needs.version.outputs.version }}
-            agent/release/incudal-agent-aarch64-${{ needs.version.outputs.version }}
+            agent/release/novaincus-agent-x86_64-${{ needs.version.outputs.version }}
+            agent/release/novaincus-agent-aarch64-${{ needs.version.outputs.version }}
           retention-days: 30
 
   release-agent:
@@ -171,7 +171,7 @@ jobs:
       - name: Download Agent artifacts
         uses: actions/download-artifact@v4
         with:
-          name: incudal-agent-${{ needs.version.outputs.version }}
+          name: novaincus-agent-${{ needs.version.outputs.version }}
           path: agent-release
 
       - name: Publish GitHub Release
@@ -181,8 +181,8 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: Incudal Agent ${{ needs.version.outputs.version }}
           files: |
-            agent-release/incudal-agent-x86_64-${{ needs.version.outputs.version }}
-            agent-release/incudal-agent-aarch64-${{ needs.version.outputs.version }}
+            agent-release/novaincus-agent-x86_64-${{ needs.version.outputs.version }}
+            agent-release/novaincus-agent-aarch64-${{ needs.version.outputs.version }}
           generate_release_notes: true
           draft: false
           prerelease: ${{ contains(needs.version.outputs.version, '-') }}

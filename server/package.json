@@ -1,7 +1,7 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "description": "Incudal 后端服务",
+  "description": "NovaIncus 后端服务",
   "type": "module",
   "main": "dist/app.js",
   "types": "dist/app.d.ts",
