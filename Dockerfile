@@ -79,6 +79,10 @@ COPY package.json pnpm-workspace.yaml ./
 COPY server/docker-entrypoint.sh ./server/
 RUN chmod 755 ./server/docker-entrypoint.sh
 
+# 修复文件权限：构建上下文的文件可能没有 world-read 权限，
+# 而运行时用户为 incudal，必须保证可读
+RUN chmod -R a+rX /app
+
 # 创建证书目录
 RUN mkdir -p server/certs && chown -R incudal:nodejs server/certs
 
