@@ -77,7 +77,7 @@ COPY package.json pnpm-workspace.yaml ./
 
 # 复制启动脚本
 COPY server/docker-entrypoint.sh ./server/
-RUN chmod +x ./server/docker-entrypoint.sh
+RUN chmod 755 ./server/docker-entrypoint.sh
 
 # 创建证书目录
 RUN mkdir -p server/certs && chown -R incudal:nodejs server/certs
