@@ -7,6 +7,7 @@
  * - content 采用「人类可读摘要 + 机器可读 ip= 标记」的格式，供解封路由解析。
  */
 
+import type { Log } from '@prisma/client'
 import { prisma } from './prisma.js'
 import { createLog, getLogsPaginated, LogResult } from './logs.js'
 
@@ -111,27 +112,19 @@ export function parseOffenderIp(content: string): string | null {
   return match ? match[1] : null
 }
 
-function toRecord(log: {
-  id: number
-  instance_id: number | null
-  username: string | null
-  action: string
-  content: string
-  result: string
-  created_at: string
-}): AbuseEventRecord {
+function toRecord(log: Log): AbuseEventRecord {
   const nameMatch = /实例 "([^"]+)"/.exec(log.content || '')
   return {
     id: log.id,
     offenderIp: parseOffenderIp(log.content),
-    instanceId: log.instance_id,
+    instanceId: log.instanceId,
     instanceName: nameMatch ? nameMatch[1] : null,
-    username: log.username,
+    username: null,
     action: log.action,
     severity: log.result === 'failed' ? 'critical' : log.result === 'success' ? 'info' : 'warning',
     content: log.content,
     result: log.result,
-    createdAt: log.created_at
+    createdAt: log.createdAt.toISOString()
   }
 }
 
@@ -182,13 +175,5 @@ export async function getAbuseEvent(id: number): Promise<AbuseEventRecord | null
   if (!log || log.module !== 'security' || !log.action.startsWith('abuse.')) {
     return null
   }
-  return toRecord({
-    id: log.id,
-    instance_id: log.instanceId,
-    username: null,
-    action: log.action,
-    content: log.content,
-    result: log.result,
-    created_at: log.createdAt.toISOString()
-  })
+  return toRecord(log)
 }

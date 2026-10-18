@@ -62,8 +62,7 @@ export async function registerOpenApi(fastify: FastifyInstance): Promise<void> {
       },
       security: [{ bearerAuth: [] }]
     },
-    hideUntagged: true,
-    exposeRoute: true
+    hideUntagged: true
   })
 
   await fastify.register(swaggerUi, {
