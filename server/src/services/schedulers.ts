@@ -16,6 +16,11 @@ export async function startSchedulers(): Promise<void> {
   const { startBillingScheduler } = await import('../services/billing-scheduler.js')
   startBillingScheduler()
 
+  // 启动按量计费调度器（NovaIncus Phase 4：每小时整点按量扣费）
+  const { startHourlyBillingWorker } = await import('../workers/hourly-billing.js')
+  startHourlyBillingWorker()
+  console.log('💰 按量计费调度器已启动')
+
   // 启动邮箱订阅过期检查调度器
   const { startMailExpiryScheduler } = await import('../services/mail-expiry-scheduler.js')
   startMailExpiryScheduler()

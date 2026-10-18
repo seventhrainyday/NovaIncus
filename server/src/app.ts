@@ -85,6 +85,9 @@ import agentRoutes from './routes/agent.js'
 import userInviteRoutes from './routes/user-invites.js'
 import vipLevelRoutes from './routes/vip-levels.js'
 import vipBenefitRoutes from './routes/vip-benefits.js'
+import abuseRoutes from './routes/abuse.js'
+import hourlyBillingRoutes from './routes/hourly-billing.js'
+import { registerOpenApi } from './lib/openapi.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -410,6 +413,11 @@ await fastify.register(agentRoutes, { prefix: '/api/agent' })
 await fastify.register(userInviteRoutes, { prefix: '/api/user-invites' })
 await fastify.register(vipLevelRoutes)
 await fastify.register(vipBenefitRoutes)
+// NovaIncus 新增：风控事件路由（Phase 3）、按量计费路由（Phase 4）
+await fastify.register(abuseRoutes)
+await fastify.register(hourlyBillingRoutes)
+// NovaIncus 新增：OpenAPI 3.0 文档（Phase 5）
+await registerOpenApi(fastify)
 
 // 生产环境：注册静态文件服务
 if (process.env.NODE_ENV === 'production') {
