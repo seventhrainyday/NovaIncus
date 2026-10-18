@@ -1009,16 +1009,27 @@ export function encryptSensitiveData(plaintext: string): string {
 
 /**
  * 解密敏感数据
+ *
+ * 安全规则：密文格式错误（非 iv:tag:encrypted 三段式）或解密失败时返回 null，
+ * 绝不返回原文——避免将未加密/损坏的密文当作解密后的凭据继续使用导致凭据泄露。
  */
 export function decryptSensitiveData(ciphertext: string): string | null {
     try {
         const parts = ciphertext.split(':')
         if (parts.length !== 3) {
-            // 可能是未加密的旧数据，直接返回
-            return ciphertext
+            // 格式错误：不是 iv:tag:encrypted 格式
+            return null
         }
 
         const [ivHex, tagHex, encrypted] = parts
+
+        // 解密前先校验 hex 字符，避免非法输入进入解密流程
+        const hexSegmentRegex = /^[0-9a-fA-F]+$/
+        const hexMaybeEmptyRegex = /^[0-9a-fA-F]*$/
+        if (!hexSegmentRegex.test(ivHex) || !hexSegmentRegex.test(tagHex) || !hexMaybeEmptyRegex.test(encrypted)) {
+            return null
+        }
+
         const key = getEncryptionKey()
         const iv = Buffer.from(ivHex, 'hex')
         const tag = Buffer.from(tagHex, 'hex')
@@ -1030,10 +1041,10 @@ export function decryptSensitiveData(ciphertext: string): string | null {
         decrypted += decipher.final('utf8')
 
         return decrypted
-    } catch (err) {
-        // Decryption failed, might be unencrypted old data
-        console.warn('Decryption failed, returning original data')
-        return ciphertext
+    } catch {
+        // 解密失败（密钥不匹配 / 数据损坏 / 非法参数）：返回 null，不返回原文
+        console.warn('Decryption failed, returning null instead of original data')
+        return null
     }
 }
 
