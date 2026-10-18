@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"novaincus-agent/internal/abuse"
 	"novaincus-agent/internal/config"
 	"novaincus-agent/internal/panel"
 	"novaincus-agent/internal/report"
@@ -40,6 +41,8 @@ func main() {
 	}
 
 	log.Printf("novaincus-agent started: panel=%s interval=%s", cfg.PanelURL, cfg.HeartbeatInterval)
+	// Phase 3: 智能风控与防滥用引擎（独立 60 秒采样循环，事件经 panel client 上报）。
+	go abuse.NewRunner(cfg, client).Run(ctx)
 	upgradeRunner := upgrade.DefaultRunner(cfg)
 	var upgradeInProgress atomic.Bool
 	if result, err := sendHeartbeat(ctx, client, cfg.HeartbeatIntervalSeconds); err != nil {
