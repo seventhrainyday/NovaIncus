@@ -46,6 +46,8 @@ type EventType =
   | 'instance_extended'
   | 'instances_batch_extended'
   | 'auto_renew_failed'
+  | 'hourly_billing_arrears'
+  | 'hourly_billing_suspended'
   | 'refund_completed'
   | 'instance_deleted_refunded'
   | 'auto_snapshot'
@@ -156,6 +158,7 @@ interface EventData {
   amount?: number             // 金额（通用）
   reason?: string             // 原因（通用）
   failReason?: string         // 失败原因
+  arrearsHours?: number       // 按量计费连续欠费小时数
   refundAmount?: number       // 退款金额
   feeAmount?: number          // 手续费金额
   refundType?: string         // 退款方式
@@ -703,6 +706,25 @@ const EVENT_TEMPLATES: Record<EventType, EventTemplate> = {
       if (data.failReason) msg += `\n原因: ${data.failReason}`
       if (data.renewAmount !== undefined) msg += `\n所需金额: ¥${Number(data.renewAmount).toFixed(2)}`
       msg += `\n请确保余额充足或手动续费`
+      return msg
+    }
+  },
+  hourly_billing_arrears: {
+    title: '⚠️ 按量计费欠费提醒',
+    message: (data) => {
+      let msg = `实例「${data.instanceName}」按量计费扣款失败（余额不足）`
+      if (data.amount !== undefined) msg += `\n本周期费用: ¥${Number(data.amount).toFixed(2)}`
+      if (data.arrearsHours !== undefined) msg += `\n已连续欠费: ${data.arrearsHours} 小时`
+      msg += `\n费用已记账，请尽快充值，长期欠费将自动停机`
+      return msg
+    }
+  },
+  hourly_billing_suspended: {
+    title: '🛑 按量计费欠费停机',
+    message: (data) => {
+      let msg = `实例「${data.instanceName}」因按量计费长期欠费已自动停机`
+      if (data.arrearsHours !== undefined) msg += `\n连续欠费: ${data.arrearsHours} 小时`
+      msg += `\n充值后可手动开机恢复`
       return msg
     }
   },

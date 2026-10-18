@@ -1025,6 +1025,7 @@ model Instance {
   checkinRecords   CheckinRecord[]
   redeemCodeUsages RedeemCodeUsage[]
   billingRecords   InstanceBillingRecord[]  // 计费记录
+  hourlyUsageRecords HourlyUsageRecord[]  // 按量计费记录
   affBinding       AffBinding?              // AFF优惠码绑定
   resourcePoolLogs ResourcePoolLog[]        // 资源池应用记录
   destroyRecords   UserDestroyRecord[]      // 销毁记录
@@ -2326,6 +2327,7 @@ model PackagePlan {
   package   Package    @relation(fields: [packageId], references: [id], onDelete: Cascade)
   instances Instance[]
   affCodes  AffCode[]  // AFF优惠码
+  hourlyBillingPolicy HourlyBillingPolicy?  // 按量计费策略（null=未配置）
 
   @@unique([packageId, name]) // 同一套餐下方案名称唯一
   @@index([packageId, isActive])
@@ -2357,6 +2359,60 @@ model InstanceBillingRecord {
   @@index([instanceId, createdAt(sort: Desc)])
   @@index([userId, createdAt(sort: Desc)])
   @@map("instance_billing_records")
+}
+
+// 按量计费状态
+enum HourlyBillingStatus {
+  paid     // 已扣费
+  arrears  // 欠费（余额不足，已记账未扣款）
+}
+
+// 套餐方案按量计费策略（NovaIncus Phase 4）
+model HourlyBillingPolicy {
+  id            Int     @id @default(autoincrement())
+  packagePlanId Int     @unique @map("package_plan_id")
+
+  enabled              Boolean @default(false) // 是否启用按量计费
+  cpuPricePerHour      Decimal @default(0) @map("cpu_price_per_hour") @db.Decimal(10, 4)       // 每核每小时单价（元）
+  memoryPricePerGbHour Decimal @default(0) @map("memory_price_per_gb_hour") @db.Decimal(10, 4) // 每 GB 内存每小时单价（元）
+  diskPricePerGbHour   Decimal @default(0) @map("disk_price_per_gb_hour") @db.Decimal(10, 4)   // 每 GB 磁盘每小时单价（元）
+  stoppedDiskRate      Decimal @default(0.1) @map("stopped_disk_rate") @db.Decimal(5, 4)       // 关机时仅收存储费的费率倍数
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  packagePlan PackagePlan @relation(fields: [packagePlanId], references: [id], onDelete: Cascade)
+
+  @@map("hourly_billing_policies")
+}
+
+// 实例按量计费记录（每小时一条）
+model HourlyUsageRecord {
+  id         Int      @id @default(autoincrement())
+  instanceId Int      @map("instance_id")
+  userId     Int      @map("user_id")
+
+  // 计费周期
+  periodStart DateTime @map("period_start")
+  periodEnd   DateTime @map("period_end")
+
+  // 计费时实例配置快照
+  cpu    Int // CPU 额度 (%)
+  memory Int // 内存 (MB)
+  disk   Int // 磁盘 (MB)
+
+  amount       Decimal            @db.Decimal(10, 2) // 本周期费用（元，正数）
+  status       HourlyBillingStatus @default(paid)
+  balanceLogId Int?               @map("balance_log_id") // 关联余额日志（欠费时为 null）
+
+  remark    String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  instance Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  @@index([instanceId, periodStart(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("hourly_usage_records")
 }
 
 // ==================== AFF推荐计划模型 ====================
