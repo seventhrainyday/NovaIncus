@@ -8,6 +8,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import * as db from '../db/index.js'
 import { prisma } from '../db/prisma.js'
 import { createLog } from '../db/logs.js'
+import { formatBytes } from '../services/traffic-utils.js'
 
 interface TelegramWebhookUser {
   id: number
@@ -94,10 +95,16 @@ const bindTokenPrefix = 'bind_'
 const bindTokenTtlMs = 10 * 60 * 1000
 const telegramWebhookSecretPattern = /^[A-Za-z0-9_-]{1,256}$/
 const telegramBotCommands: TelegramBotCommand[] = [
-  { command: 'start', description: '绑定站内账号或查看使用说明' },
+  { command: 'start', description: '绑定站内账号 / 查看使用说明（/start 实例名 可开机）' },
+  { command: 'instances', description: '查看我的实例列表' },
+  { command: 'stop', description: '关机实例（/stop 实例名）' },
+  { command: 'traffic', description: '查询实例本月流量（/traffic 实例名）' },
+  { command: 'balance', description: '查询账户余额' },
   { command: 'join', description: '申请加入普通用户群' },
   { command: 'join_vip', description: '申请加入高级用户群' }
 ]
+// 需要站内账号绑定的交互命令（/start 不带参数时除外，走原有帮助文案）
+const telegramInteractiveCommands = new Set(['/instances', '/start', '/stop', '/traffic', '/balance'])
 const telegramGroupCommandAliases = ['join', 'group', 'apply_group']
 const telegramGroupCommands = new Set(telegramGroupCommandAliases.map(command => `/${command}`))
 const telegramVipGroupCommands = new Set(['/join_vip'])
@@ -608,6 +615,188 @@ export default async function telegramRoutes(fastify: FastifyInstance) {
     )
   }
 
+  function formatInstanceStatus(status: string): string {
+    const labels: Record<string, string> = {
+      running: '运行中',
+      stopped: '已关机',
+      suspended: '已封停',
+      creating: '创建中',
+      starting: '开机中',
+      stopping: '关机中',
+      restarting: '重启中',
+      rebuilding: '重装中',
+      migrating: '迁移中',
+      error: '异常'
+    }
+    return labels[status] || status
+  }
+
+  async function getBoundUserId(telegramUserId: string): Promise<number | null> {
+    const binding = await telegramBindingModel.findUnique({
+      where: { telegramUserId }
+    })
+    return binding ? binding.userId : null
+  }
+
+  async function resolveUserInstanceByName(
+    userId: number,
+    nameArg: string
+  ): Promise<{ instance?: any; error?: string }> {
+    const needle = nameArg.trim().toLowerCase()
+    if (!needle) {
+      return { error: '请指定实例名，例如：/start 我的小鸡' }
+    }
+    const instances = await db.getInstancesByUserId(userId)
+    const matched = instances.filter((item) => item.name.toLowerCase() === needle)
+    if (matched.length === 0) {
+      return { error: `找不到名为「${nameArg.trim()}」的实例，发送 /instances 查看你的实例列表。` }
+    }
+    if (matched.length > 1) {
+      return { error: `有多个实例都叫「${nameArg.trim()}」，请先在网站上重命名后再操作。` }
+    }
+    return { instance: matched[0] }
+  }
+
+  /**
+   * 处理需要站内账号绑定的交互命令。
+   * 返回 true 表示命令已被消费（无论成功失败），false 表示不是交互命令。
+   * 鉴权：只允许操作命令发送者自己绑定的站内账号名下的实例。
+   */
+  async function handleInteractiveCommand(
+    config: TelegramBotConfig,
+    chatId: number,
+    chatType: string | undefined,
+    from: TelegramWebhookUser,
+    text: string
+  ): Promise<boolean> {
+    const command = normalizeTelegramCommand(text)
+    if (!telegramInteractiveCommands.has(command)) {
+      return false
+    }
+
+    const botToken = config.botToken
+    if (!botToken) {
+      return true
+    }
+
+    // /start 不带参数时保持原有行为：走兜底帮助文案
+    const parts = text.trim().split(/\s+/)
+    if (command === '/start' && parts.length === 1) {
+      return false
+    }
+
+    // 实例管理指令仅允许私聊，避免实例信息泄露到群聊
+    if (chatType && chatType !== 'private') {
+      await notifyTelegram(botToken, chatId, '实例管理指令请私聊机器人使用，避免信息泄露到群聊。')
+      return true
+    }
+
+    const userId = await getBoundUserId(String(from.id))
+    if (!userId) {
+      await notifyTelegram(
+        botToken,
+        chatId,
+        '请先绑定站内账号：登录网站 → 个人设置 → 生成 Telegram 绑定链接，在有效期内发送给我。'
+      )
+      return true
+    }
+
+    if (command === '/balance') {
+      const balance = await db.getUserBalance(userId)
+      await notifyTelegram(botToken, chatId, `当前账户余额：¥${formatMoney(balance)}`)
+      return true
+    }
+
+    if (command === '/instances') {
+      const instances = await db.getInstancesByUserId(userId)
+      if (instances.length === 0) {
+        await notifyTelegram(botToken, chatId, '你还没有实例，去网站上开一台吧。')
+        return true
+      }
+      const lines = instances.map((item) => {
+        const ip = item.ipv4 ? `（${item.ipv4}）` : ''
+        return `• ${item.name} — ${formatInstanceStatus(item.status)}${ip}`
+      })
+      await notifyTelegram(botToken, chatId, `你的实例（${instances.length} 台）：\n${lines.join('\n')}`)
+      return true
+    }
+
+    const arg = parts.slice(1).join(' ')
+    const { instance, error } = await resolveUserInstanceByName(userId, arg)
+    if (error || !instance) {
+      await notifyTelegram(botToken, chatId, error || '实例不存在。')
+      return true
+    }
+
+    if (command === '/traffic') {
+      const record = await prisma.instance.findUnique({
+        where: { id: instance.id },
+        select: { monthlyTrafficUsed: true, monthlyTrafficLimit: true }
+      })
+      const used = record ? formatBytes(record.monthlyTrafficUsed) : '未知'
+      const limit = record?.monthlyTrafficLimit ? formatBytes(record.monthlyTrafficLimit) : '无限制'
+      await notifyTelegram(
+        botToken,
+        chatId,
+        `实例「${instance.name}」本月流量：\n已用 ${used}\n总量 ${limit}`
+      )
+      return true
+    }
+
+    if (command === '/start' || command === '/stop') {
+      const action = command === '/start' ? 'start' : 'stop'
+      const actionText = command === '/start' ? '开机' : '关机'
+
+      if (command === '/start' && instance.status === 'running') {
+        await notifyTelegram(botToken, chatId, `实例「${instance.name}」已在运行中。`)
+        return true
+      }
+      if (command === '/stop' && instance.status === 'stopped') {
+        await notifyTelegram(botToken, chatId, `实例「${instance.name}」已经是关机状态。`)
+        return true
+      }
+      if (instance.status === 'suspended') {
+        await notifyTelegram(botToken, chatId, `实例「${instance.name}」已被封停，无法${actionText}，请联系管理员。`)
+        return true
+      }
+
+      const activeTask = await db.getActiveTaskForInstance(instance.id)
+      if (activeTask) {
+        await notifyTelegram(
+          botToken,
+          chatId,
+          `实例「${instance.name}」有进行中的任务（${activeTask.taskType}），请稍后再试。`
+        )
+        return true
+      }
+
+      const task = await db.createInstanceTask({
+        instanceId: instance.id,
+        hostId: instance.host_id,
+        userId,
+        taskType: action
+      })
+
+      await createLog(
+        userId,
+        'instance',
+        `instance.${action}`,
+        `Telegram bot queued ${action} task for instance "${instance.name}"`,
+        'success',
+        { instanceId: instance.id }
+      )
+
+      await notifyTelegram(
+        botToken,
+        chatId,
+        `已提交${actionText}任务「${instance.name}」（任务 #${task.id}），稍后发送 /instances 查看状态。`
+      )
+      return true
+    }
+
+    return false
+  }
+
   fastify.get('/admin/webhook/info', {
     onRequest: [fastify.authenticateAdmin]
   }, async (_request: FastifyRequest, reply: FastifyReply) => {
@@ -910,11 +1099,17 @@ export default async function telegramRoutes(fastify: FastifyInstance) {
     }
 
     if (!bindTokenMatch) {
-      await notifyTelegram(
-        config.botToken,
-        chatId,
-        '可用指令：\n绑定账号：请先登录网站，在个人设置里生成 Telegram 绑定链接。\n申请普通群：绑定后私聊发送 /join。\n申请高级群：绑定后私聊发送 /join_vip。'
-      )
+      const commandHandled = await handleInteractiveCommand(config, chatId, chatType, from, text)
+      if (!commandHandled) {
+        await notifyTelegram(
+          config.botToken,
+          chatId,
+          '可用指令：\n绑定账号：请先登录网站，在个人设置里生成 Telegram 绑定链接。\n' +
+          '/instances：查看我的实例\n/start 实例名：开机\n/stop 实例名：关机\n' +
+          '/traffic 实例名：查本月流量\n/balance：查余额\n' +
+          '申请普通群：绑定后私聊发送 /join。\n申请高级群：绑定后私聊发送 /join_vip。'
+        )
+      }
       return { ok: true }
     }
 
