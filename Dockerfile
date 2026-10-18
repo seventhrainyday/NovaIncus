@@ -18,6 +18,8 @@ RUN pnpm rebuild esbuild
 
 # Stage 2: 构建前端
 FROM node:22-alpine AS builder-client
+# 小内存机器构建时提高 Node 堆上限（默认按容器内存 sizing，小机器上 tsc/vue-tsc 会 OOM）
+ENV NODE_OPTIONS=--max-old-space-size=2048
 RUN corepack enable && corepack prepare pnpm@9 --activate
 WORKDIR /app
 
@@ -30,6 +32,8 @@ RUN pnpm --filter client build
 
 # Stage 3: 构建后端
 FROM node:22-alpine AS builder-server
+# 小内存机器构建时提高 Node 堆上限（默认按容器内存 sizing，小机器上 tsc/vue-tsc 会 OOM）
+ENV NODE_OPTIONS=--max-old-space-size=2048
 RUN corepack enable && corepack prepare pnpm@9 --activate
 WORKDIR /app
 
