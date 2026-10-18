@@ -265,6 +265,16 @@ export async function deletePortMapping(id: number): Promise<void> {
 }
 
 /**
+ * 更新端口映射的公网端口（自助换端口）
+ */
+export async function updatePortMappingPublicPort(id: number, publicPort: number): Promise<void> {
+  await prisma.portMapping.update({
+    where: { id },
+    data: { publicPort }
+  })
+}
+
+/**
  * 批量检查端口占用情况
  * @returns 被占用的端口列表，包含端口号和占用该端口的实例ID
  */

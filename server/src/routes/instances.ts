@@ -3972,6 +3972,173 @@ export default async function instanceRoutes(fastify: FastifyInstance) {
     }
   })
 
+  // 自助更换端口映射的公网端口（配额内，不删重建，原子更换）
+  fastify.put<{
+    Params: { id: string; portId: string }
+    Body: { publicPort: number }
+  }>('/:id/ports/:portId', {
+    onRequest: [fastify.authenticateUser],
+    schema: {
+      body: {
+        type: 'object',
+        required: ['publicPort'],
+        properties: {
+          publicPort: { type: 'integer', minimum: 1, maximum: 65535 }
+        }
+      }
+    }
+  }, async (request: FastifyRequest<{
+    Params: { id: string; portId: string }
+    Body: { publicPort: number }
+  }>, reply: FastifyReply) => {
+    const { id, portId } = request.params
+    const instanceId = Number(id)
+    const portMappingId = Number(portId)
+
+    if (isNaN(instanceId) || isNaN(portMappingId)) {
+      return reply.code(400).send(apiError(ErrorCode.PORT_MAPPING_INVALID_ID))
+    }
+
+    const { user } = request
+    const { publicPort: newPublicPort } = request.body
+
+    const instance = await db.getInstanceById(instanceId)
+    if (!instance) {
+      return reply.code(404).send(apiError(ErrorCode.INSTANCE_NOT_FOUND))
+    }
+
+    if (instance.user_id !== user.id) {
+      return reply.code(403).send(apiError(ErrorCode.FORBIDDEN))
+    }
+
+    if (instance.status === 'suspended') {
+      if (instance.suspend_reason === 'expired') {
+        return reply.code(403).send(apiError(ErrorCode.INSTANCE_SUSPENDED_EXPIRED))
+      }
+      return reply.code(403).send(apiError(ErrorCode.INSTANCE_SUSPENDED))
+    }
+
+    if (!['nat', 'nat_ipv6', 'nat_ipv6_nat', 'ipv6_nat', 'ipv6_only'].includes(instance.network_mode)) {
+      return reply.code(400).send(apiError(ErrorCode.PORT_MAPPING_NAT_ONLY))
+    }
+
+    if (await checkTransferLock(instanceId, reply)) return
+
+    const mapping = await db.getPortMappingById(portMappingId)
+    if (!mapping || mapping.instance_id !== instanceId) {
+      return reply.code(404).send(apiError(ErrorCode.PORT_MAPPING_NOT_FOUND))
+    }
+
+    const oldPublicPort = mapping.public_port
+    if (newPublicPort === oldPublicPort) {
+      return { message: 'Port unchanged', mapping }
+    }
+
+    const host = await db.getHostById(instance.host_id)
+    if (!host) {
+      return reply.code(404).send(apiError(ErrorCode.HOST_NOT_FOUND))
+    }
+
+    if (host.nat_port_start && host.nat_port_end) {
+      if (newPublicPort < host.nat_port_start || newPublicPort > host.nat_port_end) {
+        return reply.code(400).send(apiError(ErrorCode.PORT_RANGE_INVALID, `${host.nat_port_start}-${host.nat_port_end}`))
+      }
+    }
+
+    const inUse = await db.checkPortInUse(instance.host_id, newPublicPort, mapping.protocol as 'tcp' | 'udp')
+    if (inUse) {
+      return reply.code(400).send(apiError(ErrorCode.PORT_IN_USE))
+    }
+
+    const protocol = mapping.protocol as 'tcp' | 'udp'
+    const privatePort = mapping.private_port
+    const oldDeviceName = `proxy-${protocol}-${oldPublicPort}`
+    const newDeviceName = `proxy-${protocol}-${newPublicPort}`
+    const createdDeviceNames: string[] = []
+
+    try {
+      const client = await getIncusClient(host)
+
+      let isVM = false
+      if (instance.package_id) {
+        const pkg = await prisma.package.findUnique({
+          where: { id: instance.package_id }
+        })
+        isVM = !!pkg && (('instance_type' in pkg && pkg.instance_type === 'vm') || ('instanceType' in pkg && pkg.instanceType === 'vm'))
+      }
+      const actualInstanceType = isVM ? 'virtual-machine' : 'container'
+
+      let explicitIpv6 = (host as any).nat_bind_ipv6 || host.nat_public_ipv6 || host.ipv6_gateway || (host.ip_address?.includes(':') ? host.ip_address : null)
+      if (!explicitIpv6 && host) {
+        try {
+          const ipv6Alias = await prisma.hostAddressAlias.findFirst({
+            where: { hostId: host.id, kind: 'ipv6' },
+            select: { address: true }
+          })
+          if (ipv6Alias?.address) explicitIpv6 = ipv6Alias.address
+        } catch { }
+      }
+
+      const proxyStrategy = ProxyStrategyFactory.getStrategy(actualInstanceType)
+      const bindableIpv4 = selectBindableIpv4ListenAddress(
+        (host as any).nat_bind_ip || null,
+        host.nat_public_ip || null,
+        host.url,
+        host.ip_address || null
+      )
+      let targetIpv4 = normalizeIpv4Address(instance.ipv4)
+      if (!targetIpv4) {
+        const incusInstance = await getInstance(client, instance.incus_id) as { devices?: Record<string, Record<string, unknown> | undefined> }
+        targetIpv4 = resolveInstanceTargetIpv4FromIncusDevice(incusInstance)
+      }
+      const proxyDeviceRes = proxyStrategy.createProxyDevice(bindableIpv4, explicitIpv6, instance.network_mode, protocol, newPublicPort, privatePort, {
+        targetIpv4
+      })
+
+      const deviceConfigs = proxyDeviceRes.deviceConfigs
+        || (proxyDeviceRes.deviceConfig ? [{ deviceConfig: proxyDeviceRes.deviceConfig }] : [])
+
+      if (!proxyDeviceRes.success || deviceConfigs.length === 0) {
+        return reply.code(400).send(apiError(ErrorCode.INVALID_PARAMS, proxyDeviceRes.errorMessage || '底层代理生成异常被工厂截断'))
+      }
+
+      // 先删旧设备，再建新设备
+      await removeDevice(client, instance.incus_id, oldDeviceName)
+      await removeDevice(client, instance.incus_id, `${oldDeviceName}-v6`)
+
+      for (const deviceEntry of deviceConfigs) {
+        const resolvedDeviceName = `${newDeviceName}${deviceEntry.nameSuffix || ''}`
+        await addDevice(client, instance.incus_id, resolvedDeviceName, deviceEntry.deviceConfig as Record<string, string>)
+        createdDeviceNames.push(resolvedDeviceName)
+      }
+
+      await db.updatePortMappingPublicPort(portMappingId, newPublicPort)
+
+      await createLog(user.id, 'instance', 'port.change', `Changed port mapping for instance "${instance.name}" [${protocol.toUpperCase()} ${oldPublicPort} → ${newPublicPort} :${privatePort}]`, 'success', { instanceId })
+
+      return {
+        message: 'Port mapping updated',
+        mapping: { id: portMappingId, protocol, publicPort: newPublicPort, privatePort, remark: mapping.remark || null }
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      // 回滚：尝试恢复旧端口设备
+      try {
+        const host = await db.getHostById(instance.host_id)
+        if (host) {
+          const client = await getIncusClient(host)
+          for (const name of createdDeviceNames) {
+            await removeDevice(client, instance.incus_id, name).catch(() => {})
+          }
+        }
+      } catch {
+        // 忽略回滚失败，保留原始错误
+      }
+      await createLog(user.id, 'instance', 'port.change', `Failed to change port mapping: ${errorMessage}`, 'failed', { instanceId })
+      return reply.code(500).send({ error: errorMessage })
+    }
+  })
+
   // 批量添加端口映射（支持连续端口范围）
   fastify.post<{
     Params: { id: string }
