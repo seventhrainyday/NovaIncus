@@ -7,7 +7,7 @@
  * - content 采用「人类可读摘要 + 机器可读 ip= 标记」的格式，供解封路由解析。
  */
 
-import type { Log } from '@prisma/client'
+import type { Log } from '../types/database.js'
 import { prisma } from './prisma.js'
 import { createLog, getLogsPaginated, LogResult } from './logs.js'
 
@@ -117,14 +117,14 @@ function toRecord(log: Log): AbuseEventRecord {
   return {
     id: log.id,
     offenderIp: parseOffenderIp(log.content),
-    instanceId: log.instanceId,
+    instanceId: log.instance_id,
     instanceName: nameMatch ? nameMatch[1] : null,
     username: null,
     action: log.action,
     severity: log.result === 'failed' ? 'critical' : log.result === 'success' ? 'info' : 'warning',
     content: log.content,
     result: log.result,
-    createdAt: log.createdAt.toISOString()
+    createdAt: log.created_at
   }
 }
 
@@ -175,5 +175,14 @@ export async function getAbuseEvent(id: number): Promise<AbuseEventRecord | null
   if (!log || log.module !== 'security' || !log.action.startsWith('abuse.')) {
     return null
   }
-  return toRecord(log)
+  return toRecord({
+    id: log.id,
+    user_id: log.userId,
+    instance_id: log.instanceId,
+    module: log.module,
+    action: log.action,
+    content: log.content,
+    result: log.result,
+    created_at: log.createdAt.toISOString()
+  })
 }
